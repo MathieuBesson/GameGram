@@ -57,4 +57,10 @@ abstract class Http
 
         return $alert->alert();
     }
+
+    public static function setAlertAndRedirect($message, $file, $options = [])
+    {
+        Http::setAlertToSession($message, $options);
+        Http::redirect(DIR_APP . $file);
+    }
 }

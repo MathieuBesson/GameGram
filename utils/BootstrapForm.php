@@ -56,9 +56,12 @@ class BootstrapForm
 
         if ($type !== TYPE_HIDDEN) {
             $this->handleHTMLAttributs($options, 'placeholder');
-            $this->handleHTMLAttributs($options, 'value');
-            $label = $options['label'] ?? $name;
+            $label = $options['label'] ?? $name; 
             $input .= '<label for="' . $id . '" class="'. FORM_LABEL .'">' . $label . '</label>';
+            if($type !== TYPE_PASSWORD){
+                $this->handleHTMLAttributs($options, 'value');
+                $this->handleValue($name, $options);
+            }
         }
 
         if ($type === TYPE_NUMBER) {
@@ -67,10 +70,22 @@ class BootstrapForm
             $this->handleHTMLAttributs($options, 'max');
         }
 
+        
+
         $input .= '<input type="' . $type . '" class="'. FORM_CONTROL .'" id="' . $id . '" name="' . $this->slugify($name) . '" ' . $this->HTMLAttributs . '/>'; 
         $input .= '</div>';
 
         return $input;
+    }
+
+    private function handleValue($name, $options = [])
+    {
+        if(isset($_SESSION[PROCESS_FORM_SESSION . $name])){
+            $this->HTMLAttributs .= 'value="' . $_SESSION[PROCESS_FORM_SESSION . $name] . '"';
+            unset($_SESSION[PROCESS_FORM_SESSION . $name]);
+        } else {
+            $this->handleHTMLAttributs($options, 'value');
+        }
     }
 
     private function handleHTMLAttributs($options, $attributeName){

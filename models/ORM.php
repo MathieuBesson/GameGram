@@ -147,7 +147,7 @@ class ORM
         $this->insertFieldAndValues[] = [
             'field' => '`' . $field . '`',
             'value' => $value,
-            'bind' => ':' . $value,
+            'bind' => ':' . $field,
             'type' => $type,
         ];
     }
@@ -173,9 +173,7 @@ class ORM
     {
         $sql = 'INSERT INTO `' . $this->table . '` ';
 
-        var_dump($this->insertFieldAndValues);
-
-        $fields = array_unique(array_column($this->insertFieldAndValues, 'field'));
+        $fields = array_column($this->insertFieldAndValues, 'field');
 
         // Champs
         $sql .= '(';
@@ -184,18 +182,10 @@ class ORM
 
         // Valeurs
         $sql .= 'VALUES (';
-        $sql .= implode('),(', array_column($this->insertFieldAndValues, 'bind'));
+        $sql .= implode(', ', array_column($this->insertFieldAndValues, 'bind'));
         $sql .= ') ';
 
-
         $this->sql = $sql;
-
-        //  INSERT INTO client (prenom, nom, ville, age)
-        //  VALUES
-        //  ('Rébecca', 'Armand', 'Saint-Didier-des-Bois', 24),
-        //  ('Aimée', 'Hebert', 'Marigny-le-Châtel', 36),
-        //  ('Marielle', 'Ribeiro', 'Maillères', 27),
-        //  ('Hilaire', 'Savary', 'Conie-Molitard', 58);
     }
 
 
@@ -256,31 +246,35 @@ class ORM
     }
 
 
-    public function launch()
+    public function insert()
     {
         $this->buildInsertSQL();
         $this->query = $this->dbConnect->prepare($this->sql);
+        // $this->dbConnect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $this->dbConnect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        // if (!$this->query->execute()) {
+        //     die('Error [ORM 003] : ' . $this->query->errorInfo()[2]);
+        // }
 
-        
         foreach ($this->insertFieldAndValues as $iFaV) {
-            var_dump($iFaV['type']);
             $this->query->bindValue($iFaV['bind'], $iFaV['value'], $iFaV['type']);
         }
 
-        echo '<pre>';
-        print_r($this->query->queryString);
-        echo '</pre>';
-
-        // die;
-
+        
+        // dd($this->query); die;
+        dd('la');
         $this->query->execute();
-        // $this->dbConnect->exec($this->query->queryString);
         $this->resetPopertiesSQL();
 
-
+        return $this->getLastID();
         // Doit retourner le new id 
+    }
+
+    public function getLastID()
+    {
+        $this->addOrderByFieldAndDirection('id', 'DESC');
+        $this->setSelectFields('id');
+        return $this->get('first')['id'];
     }
 
 
@@ -310,11 +304,6 @@ class ORM
         // var_dump($this->existInBdd);
         // die;
         return $this->existInBdd;
-    }
-
-    // InsertRequest 
-    public function insert()
-    {
     }
 
     // UpdateRequest

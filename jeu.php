@@ -19,10 +19,7 @@ if (!$game->exist()) {
 echo $html->startDOM();
 
 // Menu 
-$html->addMenu('Presentation', 'presentation.php');
-$html->addMenu('Jeux', 'jeux.php');
-$html->addMenu('Inscription', 'inscription.php');
-$html->setDisplayResearch(false);
+include('elements/menu.php');
 
 echo $html->menu();
 
