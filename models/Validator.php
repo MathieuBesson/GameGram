@@ -1,129 +1,197 @@
 <?php
 
-define('PROCESS_FORM', 'FORM');
-define('PROCESS_FORM_SESSION', 'form_');
-
 
 class Validator
 {
-
-    private $data;
+    private $data = [];
     private $urlError;
+    private $typeProcess;
+
+    private $errors = false;
+
     private $Alert;
     private $Orm;
 
     public function __construct($data, $urlError, $typeProcess = PROCESS_FORM)
-    {
-        $this->data = $data;
-        $this->urlError = $urlError;
+    {   
+        // Type de process
         $this->typeProcess = $typeProcess;
 
+        // Nettoyage des données
         foreach ($data as $key => $value) {
-            $cleanValue = htmlentities($value);
-            if ($this->typeProcess === PROCESS_FORM) {
-                // dd($cleanValue); die;
+            // Je nettoie ma donnée
+
+            // Faire d'abord un strip_tags
+            $cleanValue = strip_tags($value, '<p><b><i><br><strong>');
+            $cleanValue = htmlentities($cleanValue);
+
+            // Je vais mettre ma donnée en session, si je suis dans un process de formulaire
+            if ($this->typeProcess == PROCESS_FORM) {
                 $_SESSION[PROCESS_FORM_SESSION . $key] = $cleanValue;
             }
+
+            // Je stocke ma donnée nettoyée dans mon objet
             $this->data[$key] = $cleanValue;
         }
-        // $this->Alert = new Alert;
-        $this->Orm = new ORM;
 
+        $this->urlError = $urlError;
+
+        // Instanciation autres objets
+        $this->Alert = new Alert;
+        $this->Orm = new Orm;
+    }
+    
+    private function alert($field, $text)
+    {
+        if ($this->typeProcess == PROCESS_FORM) {
+            $this->Alert->setAlertForm($field, $text);
+        }
+
+        $this->errors = true;
     }
 
     public function validateEmail($field)
     {
         if (!isset($this->data[$field])) {
-            die('Error [Val 001 Champ ' . $field . ' inconnu');
+            die('Erreur [Val 001] Champ '. $field .' inconnu');
         }
+
         if (!filter_var($this->data[$field], FILTER_VALIDATE_EMAIL)) {
-            Http::setAlertAndRedirect('Mail Invalide', 'inscription.php');
+            $this->alert($field, 'Erreur Email incorrect');
         }
     }
-    
 
     public function validateLength($field, $length)
     {
         if (!isset($this->data[$field])) {
-            die('Error [Val 002 Champ ' . $field . ' inconnu');
+            die('Erreur [Val 002] Champ'. $field .' inconnu');
         }
-        // dd(strlen($this->data[$field]));
-        // dd($length); die;
+
         if (strlen($this->data[$field]) < $length) {
-            Http::setAlertAndRedirect('Longueur de ' . $field . ' inssufisante', 'inscription.php');
+            $this->alert($field, 'Erreur Longueur. Attendu : ' . $length . ' caractère(s).');
         }
     }
 
     public function validateNumeric($field)
     {
         if (!isset($this->data[$field])) {
-            die('Error [Val 003 Champ ' . $field . ' inconnu]');
+            die('Erreur [Val 003] Champ '. $field .' inconnu');
         }
+
         if (!is_numeric($this->data[$field])) {
-            Http::setAlertAndRedirect('Vous devez passer un nombre', 'inscription.php');
+            $this->alert($field, 'Erreur type. Valeur numérique attendue');
         }
     }
 
     public function validateUnique($field, $tableAndField, $typePDO = PDO::PARAM_STR)
     {
         if (!isset($this->data[$field])) {
-            die('Error [Val 004 Champ ' . $field . ' inconnu');
+            die('Erreur [Val 004] Champ '. $field .' inconnu');
         }
 
-        // 'pseudo', 'users.pseudo'
+        // "Multi attribution"
         [$table, $tableField] = explode('.', $tableAndField);
 
+        // Travail avec l'ORM
         $this->Orm->setTable($table);
-        $this->Orm->addWhereFieldsAndValues($tableField, $this->data[$field], '=', $typePDO);
+        $this->Orm->addWhereFields($tableField, $this->data[$field], '=', $typePDO);
 
-        if($this->Orm->get('count') != 0){
-            Http::setAlertAndRedirect('Votre ' . $field . ' est déjà utilisé !', 'inscription.php');
+        if ($this->Orm->get('count') != 0) {
+           $this->alert($field, $this->data[$field] . ' existe déjà.');
         }
     }
 
-
-    public function validatePassword($field, $lengthRequire)
+    public function validateExist($field, $tableAndField, $typePDO = PDO::PARAM_INT)
     {
-        $this->validateLength($field, $lengthRequire);
+        if (!isset($this->data[$field])) {
+            die('Erreur [Val 005] Champ '. $field .' inconnu');
+        }
 
+        // "Multi attribution"
+        [$table, $tableField] = explode('.', $tableAndField);
+
+        // Travail avec l'ORM
+        $this->Orm->setTable($table);
+        $this->Orm->addWhereFields($tableField, $this->data[$field], '=', $typePDO);
+
+        if ($this->Orm->get('count') == 0) {
+           $this->alert($field, $this->data[$field] . ' n\'existe pas');
+        }
+    }
+
+    public function validatePassword($field, $length)
+    {
+        // Longueur
+        $this->validateLength($field, $length);
+
+        // présence d'une lettre
         $lettres = 'abcdefghijklmnopqrstuvwxyz';
         $containLettres = false;
+
+        // présence d'un chiffre
         $chiffres = '0123456789';
         $containChiffres = false;
+
+        // présence d'un caractère spécial : *+-()[]{}$!.?=
         $speciaux = '*+-()[]{}$!.?=';
         $containSpeciaux = false;
 
-        // dd($password);
-        $pass = strtolower($this->data[$field]);
-        $length = strlen($this->data[$field]);
+        $interdits = '_%';
+        $containInterdits = false;
 
-        for($i = 0; $i < $length; $i++){
-            if(strpos($lettres, $pass[$i]) !== false){
+        $pass = strtolower($this->data[$field]);
+            
+        $length = strlen($pass);
+        for ($i = 0; $i < $length; $i++) {
+
+            if (strpos($lettres, $pass[$i]) !== false) {
                 $containLettres = true;
                 continue;
             }
-            if(strpos($chiffres, $pass[$i]) !== false){
+
+            if (strpos($chiffres, $pass[$i]) !== false) {
                 $containChiffres = true;
                 continue;
             }
-            if(strpos($speciaux, $pass[$i]) !== false){
+
+            if (strpos($speciaux, $pass[$i]) !== false) {
                 $containSpeciaux = true;
+                continue;
+            }
+
+            if (strpos($interdits, $pass[$i]) !== false) {
+                $containInterdits = true;
+                continue;
             }
         }
 
-        if(!($containLettres && $containChiffres && $containSpeciaux)){
-            Http::setAlertAndRedirect('Mots de posse doit contenir 8 caractère dont 1 special, 1 chiffre et 1 alphabétique', 'inscription.php');
-        }
+        // return  $containLettres && 
+        //         $containChiffres && 
+        //         $containSpeciaux &&
+        //         !$containInterdits;
+
+        // Autre version
+        if ( !(preg_match('@[a-z]@', $pass) &&
+               preg_match('@[0-9]@', $pass) && 
+               preg_match('@[\W]@', $pass) &&
+               !preg_match('@[\_\%]{1,}@', $pass))
+               ) {
+                   $this->alert($field, 'Format invalide');
+               }
     }
 
-
-    public function crypt($field){
+    public function crypt($field)
+    {
+        // Utilisation fonction md5
         $this->data[$field] = md5($this->data[$field]);
     }
 
     public function getData()
     {
+        if ($this->errors) {
+            $this->Alert->redirect($this->urlError);
+        }
+
         return $this->data;
     }
-
 }

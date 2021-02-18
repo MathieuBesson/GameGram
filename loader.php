@@ -1,36 +1,39 @@
-<?php 
+<?php
+// Démarrage de la session, pour utiliser $_SESSION
 session_start();
-include('constantes.php');
 
-//Utils 
-include(DIR_UTILS . 'Bootstrap.php');
-include(DIR_UTILS . 'BootstrapForm.php');
-include(DIR_UTILS . 'BootstrapAlert.php');
-include(DIR_UTILS . 'Http.php');
-
+// Constantes
+define('DIR_CONSTANTES', 'constantes' . DIRECTORY_SEPARATOR);
+require(DIR_CONSTANTES . 'systeme.php');
+require(DIR_CONSTANTES . 'bootstrap.php');
+require(DIR_CONSTANTES . 'session.php');
 
 
-// Models et ORM
-include(DIR_MODELS . 'ORM.php');
-include(DIR_MODELS . 'Game.php');
-include(DIR_MODELS . 'Platform.php');
-include(DIR_MODELS . 'Family.php');
-include(DIR_MODELS . 'Publisher.php');
-include(DIR_MODELS . 'User.php');
-include(DIR_MODELS . 'Validator.php');
+// Autoloader
+spl_autoload_register(function ($class) {
+    $folders = [
+        DIR_MODELS,
+        DIR_CONTROLLERS,
+        DIR_UTILS
+    ];
+    foreach ($folders as $folder) {
+        $fileName = $folder . $class . '.php';
+        if (file_exists($fileName)) {
+            require $fileName;
+            return true;
+        }
+    }
+    return false;
+});
 
-include(DIR_UTILS . 'Auth.php');
-$Auth = new Auth();
 
-
-function dd($value){
+function dd($data)
+{
     echo '<pre>';
-    print_r($value);
+    print_r($data);
     echo '</pre>';
 }
 
-
-
-
-
-
+$Design = new Design; // Disponible partout dans toutes mes pages
+$Alert = new Alert; // Disponible partout dans toutes mes pages
+$Auth = new Auth; // Disponible partout dans toutes mes pages

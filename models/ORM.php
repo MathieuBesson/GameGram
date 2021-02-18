@@ -1,97 +1,141 @@
 <?php
+// Constantes
 define('TYPE_GET_ALL', 'all');
 define('TYPE_GET_FIRST', 'first');
 define('TYPE_GET_COUNT', 'count');
 define('TYPES_GET', [TYPE_GET_ALL, TYPE_GET_FIRST, TYPE_GET_COUNT]);
 
-define('TYPE_INT', PDO::PARAM_INT);
-define('TYPE_STR', PDO::PARAM_STR);
-define('TYPE_BOOL', PDO::PARAM_BOOL);
-
 class ORM
 {
-    // DB attributes 
-    private PDO $dbConnect;
-    private string $sql;
-    private $query;
+    private $connexion; // Contient la connexion à ma BDD
+    private $query; // Contient la requête liée à la BDD
+
+    // CONSTRUCTION DE LA REQUETE SQL
+    private $sql;
+
+    // Pour toutes mes requêtes
     private $table;
-    protected $whereFieldsAndValues;
+
+    // Pour ma requête SELECT
+    private $selectFields;
+
+    // Pour mon WHERE
+    private $whereFieldsAndValues;
     private $typeWhere;
-    private $orderByFieldAndDirection;
 
-    // Data entry exist ? 
-    private $existInBdd = false;
+    // Pour le ORDER
+    private $orderFieldsAndDirection;
 
-    protected array $selectFieldsAndValues;
-    private array $insertFieldAndValues;
+    // Pour le LIMIT
+    private $limitCount;
+    private $limitOffset;
 
-    // protected $order = '';
-    // protected $limit = '';
-    // private array $result = [];
+    // Pour le INSERT
+    private $insertFieldsAndValues;
 
+    // Pour le UPDATE
+    private $updateFieldsAndValues;
+
+    // Permet de savoir si une entrée donnée existe
+    private $existInBDD = false;
+
+    // Doit me permettre de me connecter à ma base de données (Constructeur)
     public function __construct()
     {
-        $this->connect();
-        $this->resetPopertiesSQL();
-    }
-
-
-    /**
-     * BDD coonexion
-     *
-     * @return void
-     */
-    private function connect(): void
-    {
-        $this->dbConnect = new PDO(
+        $this->connexion = new PDO(
             'mysql:host=' . BDD_HOST . ';dbname=' . BDD_NAME,
             BDD_USER,
-            BDD_PASSWORD
+            BDD_PASS
         );
+
+        $this->resetPropertiesSQL(); // ou setDefaultValuesSQL
     }
 
-    // hydratation of data
-    protected function populate($id)
+    // On remet "à zéro" les propriétés qui permettent de créer la requête SQL
+    private function resetPropertiesSQL()
     {
-        $model = $this->getById($id);
-        if (!$this->existInBdd($id)) {
-            return false;
+        // Pour ma requête SELECT
+        $this->selectFields = [];
+
+        // Pour mon WHERE
+        $this->whereFieldsAndValues = [];
+        $this->typeWhere = 'AND';
+
+        // Pour mon ORDER
+        $this->orderFieldsAndDirection = [];
+
+        // Pour mon LIMIT
+        $this->limitCount = null;
+        $this->limitOffset = null;
+
+        // Pour ma requête INSERT
+        $this->insertFieldsAndValues = [];
+
+        // Pour ma requête UPDATE
+        $this->updateFieldsAndValues = [];
+    }
+
+    // Doit me permettre d'executer des requêtes
+    private function execute()
+    {
+        // On construit la requête
+        $this->buildSelectSQL();
+
+        $this->query = $this->connexion->prepare($this->sql);
+
+        // bindValue
+        // Pas besoin de tester if (!empty())
+        foreach ($this->whereFieldsAndValues as $wFaV) {
+            $this->query->bindValue(
+                ':' . $wFaV['binder'],
+                $wFaV['value'],
+                $wFaV['type']
+            );
         }
 
-        foreach ($model as $field => $value) {
-            if (is_numeric($field)) {
-                continue;
-            }
-
-            $this->$field = $value;
+        if (!$this->query->execute()) {
+            // Erreur requête ?
+            die('Erreur [ORM 005] : ' . $this->query->errorInfo()[2]);
         }
 
-        return true;
+        // On remet "à zéro" les propriétés qui permettent de créer la requête SQL
+        $this->resetPropertiesSQL();
     }
 
-    /**
-     * Check if the corespondant $id element exist
-     *
-     * @return void
-     */
-    public function existInBdd($id)
+
+    public function delete()
     {
-        $this->addWhereFieldsAndValues('id', $id);
-        $this->setSelectFields('id');
+        // On construit la requête
+        $this->buildDeleteSQL();
 
-        $this->existInBdd = (bool) $this->get(TYPE_GET_COUNT);
+        $this->query = $this->connexion->prepare($this->sql);
 
+        // bindValue
+        // Pas besoin de tester if (!empty())
+        foreach ($this->whereFieldsAndValues as $wFaV) {
+            $this->query->bindValue(
+                ':' . $wFaV['binder'],
+                $wFaV['value'],
+                $wFaV['type']
+            );
+        }
 
+        if (!$this->query->execute()) {
+            // Erreur requête ?
+            die('Erreur [ORM 002] : ' . $this->query->errorInfo()[2]);
+        }
 
-        return $this->existInBdd;
+        // On remet "à zéro" les propriétés qui permettent de créer la requête SQL
+        $this->resetPropertiesSQL();
     }
 
-
-    public function get(string $type)
+    // Doit me permettre d'extraire le résultat de ces requêtes
+    public function get($type)
     {
         if (!in_array($type, TYPES_GET)) {
-            die('Error [ORM 001] : Mauvais type pour get');
+            die('Erreur [ORM 001] : Mauvais type pour get');
         }
+
         $this->execute();
 
         switch ($type) {
@@ -109,86 +153,248 @@ class ORM
         }
     }
 
-    private function resetPopertiesSQL()
+    public function insert()
     {
-        $this->whereFieldsAndValues = [];
-        $this->typeWhere = 'AND';
-        $this->orderByFieldAndDirection = [];
-        $this->selectFieldsAndValues = [];
-    }
+        // On construit la requête
+        $this->buildInsertSQL();
 
+        $this->query = $this->connexion->prepare($this->sql);
 
-    private function execute()
-    {
-
-        $this->buildSelectSQL();
-        $this->query = $this->dbConnect->prepare($this->sql);
-
-        // $this->dbConnect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        foreach ($this->whereFieldsAndValues as $wFaV) {
-            $this->query->bindValue(':' . $wFaV['binder'], $wFaV['value'], $wFaV['type']);
+        // bindValue
+        // Pas besoin de tester if (!empty())
+        foreach ($this->insertFieldsAndValues as $iFaV) {
+            $this->query->bindValue(
+                $iFaV['bind'],
+                $iFaV['value'],
+                $iFaV['type']
+            );
         }
 
         if (!$this->query->execute()) {
-            die('Error [ORM 002] : ' . $this->query->errorInfo()[2]);
+            // Erreur requête ?
+            die('Erreur [ORM 003] : ' . $this->query->errorInfo()[2]);
+        }
+        // On remet "à zéro" les propriétés qui permettent de créer la requête SQL
+        $this->resetPropertiesSQL();
+
+        return $this->getLastId();
+    }
+
+
+    public function update()
+    {
+        // On construit la requête
+        if(empty($this->whereFieldsAndValues)){
+            die('Erreur [ORM 006] : WHERE vide dans update()');
         }
 
-        $this->query->execute();
-        $this->resetPopertiesSQL();
+        $this->buildUpdateSQL();
+
+        $this->query = $this->connexion->prepare($this->sql);
+
+        // bindValue
+        // Pas besoin de tester if (!empty())
+        foreach ($this->updateFieldsAndValues as $uFaV) {
+            $this->query->bindValue(
+                $uFaV['bind'],
+                $uFaV['value'],
+                $uFaV['type']
+            );
+        }
+
+        foreach ($this->whereFieldsAndValues as $wFaV) {
+            $this->query->bindValue(
+                ':' . $wFaV['binder'],
+                $wFaV['value'],
+                $wFaV['type']
+            );
+        }
+
+        // dd($this->query); die;
+
+        if (!$this->query->execute()) {
+            // Erreur requête ?
+            die('Erreur [ORM 004] : ' . $this->query->errorInfo()[2]);
+        }
+        // On remet "à zéro" les propriétés qui permettent de créer la requête SQL
+        $this->resetPropertiesSQL();
+
+        return $this->getLastId();
     }
 
-    public function setSelectFields($fields): void
+
+    // On va chercher le dernier ID ajouté dans la table
+    public function getLastId()
     {
-        $this->selectFieldsAndValues = func_get_args();
+        $this->addOrder('id', 'DESC');
+        $this->setSelectFields('id');
+        return $this->get('first')['id'];
     }
 
-    public function addInsertField($field, $value, $type = PDO::PARAM_STR): void
+    public function setTable($table)
     {
-        $this->insertFieldAndValues[] = [
-            'field' => '`' . $field . '`',
+        $this->table = $table;
+    }
+
+    public function setSelectFields()
+    {
+        $this->selectFields = func_get_args();
+    }
+
+    public function setTypeWhere($type)
+    {
+        $this->typeWhere = $type;
+    }
+
+    public function addWhereFields($field, $value, $operator = '=', $type = PDO::PARAM_INT)
+    {
+        $this->whereFieldsAndValues[] = [
+            'field' => $field,
             'value' => $value,
-            'bind' => ':' . $field,
-            'type' => $type,
+            'operator' => $operator,
+            'type' => $type
+        ];
+    }
+
+    public function addOrder($field, $direction = 'ASC')
+    {
+        $this->orderFieldsAndDirection[] = [
+            'field' => $field,
+            'direction' => $direction
+        ];
+    }
+
+    public function setLimit($count, $offset = null)
+    {
+        $this->limitCount = $count;
+
+        if ($offset !== null) {
+            $this->limitOffset = $offset;
+        }
+    }
+
+    public function addInsertFields($field, $value, $type = PDO::PARAM_STR)
+    {
+        $this->insertFieldsAndValues[] = [
+            'field' => '`' . $field . '`', // Je stocke les valeurs comme
+            'bind' => ':' . $field, // j'en aurais besoin dans mon SQL
+            'value' => $value,
+            'type' => $type
+        ];
+    }
+
+
+    public function addUpdateFields($field, $value, $type = PDO::PARAM_STR)
+    {
+        $this->updateFieldsAndValues[] = [
+            'field' => '`' . $field . '`', // Je stocke les valeurs comme
+            'bind' => ':' . $field, // j'en aurais besoin dans mon SQL
+            'value' => $value,
+            'type' => $type
         ];
     }
 
     private function buildSelectSQL()
     {
+        // Requête de base, SELECT fields FROM table
         $sql = 'SELECT ';
 
-
-        if (empty($this->selectFieldsAndValues)) {
+        if (empty($this->selectFields)) {
             $sql .= ' * ';
         } else {
-            $sql .= implode(', ', $this->selectFieldsAndValues);
+            $sql .= implode(', ', $this->selectFields);
         }
 
-        $sql .= ' FROM ' . $this->table . $this->handleWhere() . $this->handleOrder();
+        $sql .= ' FROM ' . $this->table;
 
+        // WHERE
+        $sql .= $this->handleWhere();
+
+        // ORDER
+        $sql .= $this->handleOrder();
+
+        // LIMIT
+        $sql .= $this->handleLimit();
 
         $this->sql = $sql;
     }
 
     private function buildInsertSQL()
     {
-        $sql = 'INSERT INTO `' . $this->table . '` ';
-
-        $fields = array_column($this->insertFieldAndValues, 'field');
+        // Requête de base, INSERT INTO `families` (`name`) VALUES ('RPG');
+        $sql = 'INSERT INTO ' . $this->table . ' ';
 
         // Champs
         $sql .= '(';
-        $sql .= implode(', ', $fields);
-        $sql .= ') ';
+        $sql .= implode(',', array_column($this->insertFieldsAndValues, 'field'));
+        $sql .= ')';
 
         // Valeurs
-        $sql .= 'VALUES (';
-        $sql .= implode(', ', array_column($this->insertFieldAndValues, 'bind'));
-        $sql .= ') ';
+        $sql .= ' VALUES ';
+        $sql .= '(';
+        $sql .= implode(',', array_column($this->insertFieldsAndValues, 'bind'));
+        $sql .= ')';
 
         $this->sql = $sql;
     }
 
+    public function buildDeleteSQL()
+    {
+        // Requête de base, DELETE FROM games WHERE id=:id
+        $sql = 'DELETE ';
 
+        $sql .= 'FROM ' . $this->table;
+
+        // WHERE
+        $sql .= $this->handleWhere();
+
+        $this->sql = $sql;
+    }
+
+    private function buildUpdateSQL()
+    {
+        // Requête de base, UPDATE table_name SET column1 = value1, column2 = value2, ... WHERE condition;
+        $sql = ' UPDATE ' . $this->table ; 
+
+        // WHERE
+        $sql .= $this->handleSet();
+
+        // WHERE
+        $sql .= $this->handleWhere();
+
+        $this->sql = $sql;
+    }
+
+    private function handleOrder()
+    {
+        if (empty($this->orderFieldsAndDirection)) {
+            return '';
+        }
+
+        $orders = [];
+        foreach ($this->orderFieldsAndDirection as $oFaD) {
+            $orders[] = $oFaD['field'] . ' ' . $oFaD['direction'];
+        }
+
+        return ' ORDER BY ' . implode(', ', $orders);
+    }
+
+    private function handleLimit()
+    {
+        if (empty($this->limitCount)) {
+            return '';
+        }
+
+        $limit = ' LIMIT ';
+
+        if ($this->limitOffset !== null) {
+            $limit .= $this->limitOffset . ',';
+        }
+
+        $limit .= $this->limitCount;
+
+        return $limit;
+    }
 
     private function handleWhere()
     {
@@ -196,118 +402,93 @@ class ORM
             return '';
         }
 
-        $nb = 0;
-        $binders = [];
         $wheres = [];
+        $binders = [];
         foreach ($this->whereFieldsAndValues as $id => $wFaV) {
 
-            // Vérifier que :truc n'est pas déjà 
+            // Vérifier que le ":truc" n'est pas déjà là, incrémenté si besoin
             $binder = $wFaV['field'];
             $nb = 2;
-
             while (in_array($binder, $binders)) {
                 $binder = $wFaV['field'] . '_' . $nb;
                 $nb++;
             }
             $binders[] = $binder;
 
-
             $wheres[] = $wFaV['field'] . ' ' . $wFaV['operator'] . ' :' . $binder;
-
             $this->whereFieldsAndValues[$id]['binder'] = $binder;
+            // PAS équivalente à $wFaV['binder'] = $binder
         }
 
-        return ' WHERE ' . implode(' AND ', $wheres);
+        // ['field' => 'id', 'value' => 14, 'operator' => '=', 'type' => INT]
+        // id = :id
+
+        return ' WHERE ' . implode(' ' . $this->typeWhere . ' ', $wheres);
     }
 
-    private function handleOrder()
+    private function handleSet()
     {
-        if (empty($this->orderByFieldAndDirection)) {
-            return '';
+        if (empty($this->updateFieldsAndValues)) {
+            die('Erreur [ORM 007] : Pas de valeurs passés dans le SET du UPDATE');
         }
 
-        // print_r($this->orderByFieldAndDirection); die;
-        $orders = [];
-        foreach ($this->orderByFieldAndDirection as $oFaD) {
-            $orders[] = $oFaD['field'] . ' ' . $oFaD['direction'];
+        $values = [];
+
+        foreach($this->updateFieldsAndValues as $uFaV){
+            $values[] = $uFaV['field'] . ' = ' . $uFaV['bind'];
         }
 
-        return ' ORDER BY ' . implode(' AND ', $orders);
+        return ' SET ' . implode(', ', $values);
     }
 
-    public function addWhereFieldsAndValues($field, $value, $operator = '=', $type = TYPE_INT)
-    {
-        $this->whereFieldsAndValues[] = compact('field', 'value', 'operator', 'type');
-    }
-
-    public function addOrderByFieldAndDirection($field, $direction = 'ASC')
-    {
-        $this->orderByFieldAndDirection[] = compact('field', 'direction');
-    }
-
-
-    public function insert()
-    {
-        $this->buildInsertSQL();
-        $this->query = $this->dbConnect->prepare($this->sql);
-        // $this->dbConnect->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-
-        // if (!$this->query->execute()) {
-        //     die('Error [ORM 003] : ' . $this->query->errorInfo()[2]);
-        // }
-
-        foreach ($this->insertFieldAndValues as $iFaV) {
-            $this->query->bindValue($iFaV['bind'], $iFaV['value'], $iFaV['type']);
-        }
-
-        
-        // dd($this->query); die;
-        dd('la');
-        $this->query->execute();
-        $this->resetPopertiesSQL();
-
-        return $this->getLastID();
-        // Doit retourner le new id 
-    }
-
-    public function getLastID()
-    {
-        $this->addOrderByFieldAndDirection('id', 'DESC');
-        $this->setSelectFields('id');
-        return $this->get('first')['id'];
-    }
-
-
-
-    // Méthodes d'accès rapide aux données 
-
+    // Méthodes d'accès rapides aux données
     public function getById($id)
     {
-        $this->addWhereFieldsAndValues('id', $id);
-        $datas = $this->get('first');
-        return $datas;
+        // Vérifier ce qu'il se passe ici ?
+        $this->addWhereFields('id', $id);
+        return $this->get('first');
     }
 
-    public function setTable(string $table): void
+    // On vérifie que l'élément correspondant à $id existe
+    public function existInBDD($id)
     {
-        $this->table = $table;
+        $this->addWhereFields('id', $id);
+        $this->setSelectFields('id');
+
+        return $this->existInBDD = (bool) $this->get('count');
+
+        // Equivalent à
+        $this->existInBDD = (bool) $this->get('count');
+        return $this->existInBDD;
     }
 
-    public function setTypeWhere(string $typeWhere): void
+    // Je "garnis" mon objet avec des propriétés qui correspondent 
+    // aux noms de mes champs
+    // avec les valeurs associées à l'id
+    public function populate($id)
     {
-        $this->typeWhere = $typeWhere;
+        // Vérifie l'existence
+        if (!$this->existInBDD($id)) {
+            return false;
+        }
+
+        // On va chercher les données
+        $model = $this->getById($id);
+
+        foreach ($model as $field => $value) {
+            if (is_numeric($field)) {
+                continue;
+            }
+
+            $this->$field = $value; // Attribution dynamique
+            // PHP est permissif à ce niveau là et permet ça
+        }
+
+        return true;
     }
 
     public function exist()
     {
-
-        // var_dump($this->existInBdd);
-        // die;
-        return $this->existInBdd;
-    }
-
-    // UpdateRequest
-    public function update()
-    {
+        return $this->existInBDD;
     }
 }

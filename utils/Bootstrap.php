@@ -1,167 +1,188 @@
 <?php
-// Bootsrap const
-define('INFO', 'info');
-define('SUCCESS', 'success');
-define('PRIMARY', 'primary');
-define('SECONDARY', 'secondary');
-define('DANGER', 'danger');
-define('WARNING', 'warning');
-define('LIGHT', 'light');
-define('DARK', 'dark');
-define('LINK', 'link');
-
-define('BTN', 'btn');
-define('FORM_LABEL', 'form-label');
-define('FORM_CONTROL', 'form-control');
-define('BADGE', 'badge');
-define('BG', 'bg');
-define('ALERT', 'alert');
 
 
-
-class Bootsrap
+class Bootstrap
 {
+	// Propriétés - private par défaut
+	
+	// Pour mon DOM
+	private $title;
+	private $description;
+	private $lang = 'fr';
+	
+	// Pour mon menu
+	private $menuItems = [];
+	private $displayRecherche;
+	
+	// Pour les alerts
+	private $Alert;
 
-    private string $pageName;
-    private string $metaDescription;
-    private string $lang;
-    private array $menuLinks;
-    private bool $displayResearch = false;
+	// Constructeur
+	public function __construct($title, $description = '')
+	{
+		$this->title = $title;
+		$this->description = $description;
 
+		$this->Alert = new Alert;
+	}
+	
+	// Méthodes spécifiques - private par défaut
+	public function startDom()
+	{
+		return '<!doctype html>
+<html lang="'. $this->lang .'">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	
+    <title>'. NAME_APPLICATION .' | '. $this->title .'</title>
+    <meta name="description" content="'. $this->description .'">
 
-    public function __construct($pageName, $metaDescription, $lang)
-    {
-        $this->pageName = $pageName;
-        $this->metaDescription = $metaDescription;
-        $this->lang = $lang;
-    }
+	<link href="'. DIR_ASSETS . DIR_CSS .'bootstrap.css" rel="stylesheet">
+	<link href="'. DIR_ASSETS . DIR_CSS .'select2.css" rel="stylesheet">
+    <link href="'. DIR_ASSETS . DIR_CSS .'theme.css" rel="stylesheet">
+  </head>
+  <body>';
+	}
+	
+	public function endDom()
+	{
+		return '
+		<script src="'. DIR_ASSETS . DIR_JS .'jquery.js"></script>
+		<script src="'. DIR_ASSETS . DIR_JS .'bootstrap.js"></script>
+		<script src="'. DIR_ASSETS . DIR_JS .'select2.js"></script>
+    	<script src="'. DIR_ASSETS . DIR_JS .'main.js"></script>
+  </body>
+</html>';
+	}
+	
+	public function startMain()
+	{
+		return '<main class="container">' .
+			   $this->Alert->getAlertHTML();
+	}
+	
+	public function endMain()
+	{
+		return '</main>';
+	}
+	
+	public function addMenu($name, $link)
+	{
+		$this->menuItems[] = [
+			'name' => $name,
+			'link' => $link
+		];
+	}
+	
+	public function menu()
+	{
+		$menuHtml = '<nav class="navbar navbar-expand-md navbar-dark bg-'. SUCCESS .'">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="./">'. NAME_APPLICATION .'</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
 
+    <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+      <ul class="navbar-nav me-auto mb-2 mb-md-0">';
+		
+		foreach ($this->menuItems as $item) {
+			$menuHtml .= '<li class="nav-item">
+          <a class="nav-link" href="'. $item['link'] .'">'. $item['name'] .'</a>
+        </li>';
+		}
+        
+		$menuHtml .='</ul>';
+		
+		if ($this->displayRecherche) {
+			$menuHtml .= '<form class="d-flex">
+        <input class="form-control me-2" type="search" placeholder="rechercher un jeu..." aria-label="Search">
+        <button class="btn btn-outline-success" type="submit">Recherche</button>
+      </form>';
+		}
+      
+		$menuHtml .='</div>
+  </div>
+</nav>';
+		
+		return $menuHtml;
+	}
+	
+	public function image($image, $options = [])
+	{
+		// Gérer mon alt
+		// Equivalent à : (opérateur Null coalescent ou appelé le "double point d'interrogation")
+		$alt = $options['alt'] ?? '';
+		
+		// Largeur max de l'image
+		$width = $options['width'] ?? '100%';
+		
+		// Class par défaut
+		$class = 'img-fluid ';
+		
+		// Classes supplémentaires
+		$class .= $options['class'] ?? '';
+		
+		return '<img src="'. DIR_ASSETS . DIR_IMG . $image . '" class="'. $class .'" alt="'. $alt .'" style="max-width:'. $width .'">';
+	}
+	
+	public function button($name, $linkParams, $options = [])
+	{
+		// Path
+		$link = Router::urlView(
+			$linkParams['dir'], 
+			$linkParams['page'], 
+			$linkParams['options'] ?? []
+		);
+		
+		// Gestion de la couleur
+		$color = $options['color'] ?? PRIMARY; 
+		
+		// Class par défaut
+		$class = BTN . ' ' . BTN . '-' . $color . ' ';
+		
+		// Classes supplémentaires
+		$class .= $options['class'] ?? '';
+		
+		return '<a href="'. $link .'" class="'. $class .'">' . $name . '</a>';
+	}
 
-    public function startDOM(): string
-    {
-        return '
-            <!doctype html>
-            <html lang="' . $this->lang . '">
-            
-            <head>
-                <meta charset="' . $this->lang . '">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>' . APP_NAME . ' - ' . $this->pageName . '</title>
-                <meta name="description" content="' . $this->metaDescription . '">
-            
-                <!-- Bootstrap core CSS -->
-                <link href="' . DIR_CSS . 'bootstrap.css" rel="stylesheet">
-            
-                <!-- Custom styles for this template -->
-                <link href="' . DIR_CSS . 'theme.css" rel="stylesheet">
-            </head>
-            
-            <body>
-        ';
-    }
+	public function badge($text, $options = [])
+	{
+		// Gestion de la couleur
+		$color = $options['color'] ?? PRIMARY; 
+		
+		// Class par défaut
+		$class = BADGE . ' ' . BG . '-' . $color . ' ';
+		
+		// Classes supplémentaires
+		$class .= $options['class'] ?? '';
 
-    public function endDOM(): string
-    {
-        return '
-                <!-- Javascript files -->
-                <script src="' . DIR_JS . 'bootstrap.js"></script>
-                <script src="' . DIR_JS . 'main.js"></script>
-            
-            </body>
-            </html>
-        ';
-    }
+		return '<span class="'. $class .'">'. $text .'</span>';
+	}
 
-    public function startMain(): string
-    {
-        return '<main class="container">'. Http::getAlert();
-    }
+	public function alert($text, $options = []) {
+		$alert = new BootstrapAlert($text, $options);
+		return $alert->alert();
+	}
 
-    public function endMain(): string
-    {
-        return '</main>';
-    }
-
-    public function menu(): string
-    {
-        $HTMLlinks = '';
-        foreach ($this->menuLinks as $link) {
-            $HTMLlinks .= '
-                <li class="nav-item">
-                    <a class="nav-link" href="' . $link['fileName'] . '">' . $link['content'] . '</a>
-                </li>
-            ';
-        }
-
-        return '
-            <nav class="navbar navbar-expand-md navbar-dark bg-' . WARNING . '">
-                <div class="container-fluid">
-                    <a class="navbar-brand" href="index.php">GameGram</a>
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-
-                    <div class="collapse navbar-collapse" id="navbarsExampleDefault">
-                        <ul class="navbar-nav me-auto mb-2 mb-md-0">'
-            . $HTMLlinks .
-            '</ul>'  . ($this->displayResearch ? $this->researchHTML() : '') .
-            '</div>
-                </div>
-            </nav>';
-    }
-
-
-    public function researchHTML(): string
-    {
-        return '
-            <form class="d-flex">
-                <input class="form-control me-2" type="search" placeholder="Rechercher un jeu" aria-label="Search">
-                <button class="btn btn-outline-success" type="submit">Rechercher</button>
-            </form>
-        ';
-    }
-
-
-    public function button($content, $link, $class = []): string
-    {
-        $color = $class['color'] ?? 'primary';
-        return '<a class="' . BTN . ' ' . BTN . '-' . $color . '" href="' . $link . '">' . $content . '</a>';
-    }
-
-    public function badge($content, $class = []): string
-    {
-        $color = $class['color'] ?? 'primary';
-        return '<span class="' . BADGE . ' ' . BG . '-' . $color . '">' . $content . '</span>';
-    }
-
-
-    public function alert($content, $options = []): string
-    {
-        $alert = new BootstrapAlert($content, $options);
-        return $alert->alert();
-    }
-
-
-
-    public function image($fileName, $options = []): string
-    {
-        $alt = $options['alt'] ?? 'Une image du site Gamegram';
-        $width = $options['width'] ?? "65%";
-        $class = "img-fluid ";
-
-        $class .= $options['class'] ?? "";
-
-        return '<img class="' . $class . '" src="' . DIR_IMG . $fileName . '" alt="' . $alt . '" width="' . $width . '" />';
-    }
-
-    public function addMenu($content, $fileName): void
-    {
-        $this->menuLinks[] = ['content' => $content, 'fileName' => $fileName];
-    }
-
-
-    public function setDisplayResearch($bool): void
-    {
-        $this->displayResearch = $bool;
-    }
+	// Met en forme le texte HTML
+	public function toHtml($txt)
+	{
+		return nl2br(html_entity_decode($txt));
+	}
+	
+	// Getteurs / Setteurs - public par défaut
+	public function setDisplayRecherche($mode)
+	{
+		$this->displayRecherche = $mode;
+	}
+	
+	public function setLang($lang)
+	{
+		$this->lang = $lang;
+	}
+	
+	// Méthodes magiques - public par défaut
 }

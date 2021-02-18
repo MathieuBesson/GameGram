@@ -1,36 +1,27 @@
 <?php
 include('loader.php');
 
-$html = new Bootsrap('Acceuil', 'Bienvenue sur ' . APP_NAME . ' !', 'fr');
+// param correspondant à la vue souhaitez
+$dir = $_GET['dir'] ?? 'Games';
+$page = $_GET['page'] ?? 'acceuil';
 
-// Start DOM HTML
-echo $html->startDOM();
+$controller = ucfirst($dir) . 'ViewController';
 
-// Menu 
+Router::controlFile(DIR_CONTROLLERS, $controller);
 
-include('elements/menu.php');
-
-echo $html->menu();
-
-
-// Main content
-echo $html->startMain();
-?>
+$call = new $controller;
 
 
-<div class="starter-template text-center py-5 px-3">
-    <h1><?= APP_NAME ?></h1>
-    <p class="lead">Le réseaux social favoris des vrais GAMMERS<br> Rejoinds nous vite !</p>
-    <?= $html->image('star-wars.jpg', ['alt' => 'Maginifique image d\'un stormtrooper', 'width' => "40%", "class" => 'rounded mb-4']) ?>
-    <p><?= $html->button('Inscription', 'inscription.php', ['color' => PRIMARY . ' mr-5']) ?>
-    <?= $html->button('Presentation', 'presentation.php', ['color' => SUCCESS]) ?></p>
+Router::controlMethod($controller, $page);
+
+$data = $call->{$page}();
+
+foreach($data as $name => $value){
+    $variableName = '_' . $name;
+    ${$variableName} = $value ;
+}
 
 
-</div>
+Router::controlFile(DIR_VIEWS . $dir . DIRECTORY_SEPARATOR , $page);
 
-
-<?php
-echo $html->endMain();
-
-// End DOM HTML
-echo $html->endDOM();
+include(DIR_VIEWS . 'Templates/front.php');

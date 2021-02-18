@@ -1,6 +1,4 @@
 <?php
-
-
 class Publisher extends ORM
 {
     public function __construct($id = null)
@@ -8,7 +6,7 @@ class Publisher extends ORM
         parent::__construct();
         $this->setTable('publishers');
 
-        if($id != null){
+        if ($id != null) {
             $this->populate($id);
         }
     }

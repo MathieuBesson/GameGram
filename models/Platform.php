@@ -1,5 +1,4 @@
 <?php
-
 class Platform extends ORM
 {
     public function __construct($id = null)
@@ -7,7 +6,7 @@ class Platform extends ORM
         parent::__construct();
         $this->setTable('platforms');
 
-        if($id != null){
+        if ($id != null) {
             $this->populate($id);
         }
     }

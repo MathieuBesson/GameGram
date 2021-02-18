@@ -1,5 +1,4 @@
 <?php
-define('SESSION_USER_ID', 'session_user_id');
 
 class Auth
 {
@@ -8,25 +7,26 @@ class Auth
 
     public function __construct()
     {
-        if(isset($_SESSION[SESSION_USER_ID])){
+        // A la construction de l'objet
+        // S'il y a un user_id stocké en session,
+        // Je set mon User complet
+        if (isset($_SESSION[SESSION_USER_ID])) {
             $this->setUser($_SESSION[SESSION_USER_ID]);
         }
     }
 
-    public function setUser($userId)
+    public function setUser($idUser)
     {
-        $this->User = new User($userId);
+        $this->User = new User($idUser);
         $this->logged = true;
 
-        $_SESSION[SESSION_USER_ID] = $userId;
-    }   
+        $_SESSION[SESSION_USER_ID] = $idUser;
+    }
 
-    public function logOut()
+    public function logout()
     {
         $this->logged = false;
         unset($_SESSION[SESSION_USER_ID]);
         unset($this->User);
     }
 }
-
-

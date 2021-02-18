@@ -1,8 +1,6 @@
 <?php
-
 class Family extends ORM
 {
-
     public function __construct($id = null)
     {
         parent::__construct();
@@ -15,7 +13,7 @@ class Family extends ORM
 
     public function create($name)
     {
-        $this->addInsertField('name', $name, PDO::PARAM_STR);
+        $this->addInsertFields('name', $name, PDO::PARAM_STR);
         $newId = $this->insert();
         $this->populate($newId);
     }

@@ -1,34 +1,30 @@
-<?php 
+<?php
 
-class BootstrapAlert 
+
+class BootstrapAlert
 {
     private $text;
     private $options;
 
-    public function __construct(string $text, array $options)
+    public function __construct($text, $options = [])
     {
         $this->text = $text;
         $this->options = $options;
-
     }
 
-
-    public function alert(): string
+    public function alert()
     {
-        $color = $this->options['color'] ?? DANGER;
-        // $alertContent = $content;
-        
-        // if(isset($_SESSION[ALERT])){
-        //     $alertContent = $_SESSION[ALERT]['message'];
-        //     $color = $_SESSION[ALERT]['color'];
-        //     Http::removeDataFromSession(ALERT);
-        // } 
-        $class = ALERT . ' ' . ALERT . '-' . $color . ' ';
-        $class .= $this->options['class'] ?? DANGER;
+        // Gestion de la couleur
+		$color = $this->options['color'] ?? DANGER; 
+		
+		// Class par défaut
+		$class = ALERT . ' ' . ALERT . '-' . $color . ' ';
+		
+		// Classes supplémentaires
+		$class .= $this->options['class'] ?? '';
 
-
-        return '<div class="' . $class . '" role="' . ALERT . '">'
-                    . $this->text .
+        return '<div class="mt-3 ' . $class . '">' .
+                $this->text . 
                 '</div>';
     }
 }
