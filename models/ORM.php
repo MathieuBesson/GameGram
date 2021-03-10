@@ -491,4 +491,27 @@ class ORM
     {
         return $this->existInBDD;
     }
+
+
+    public function getList($fieldId = 'id', $fieldName = 'name')
+    {
+        $this->setSelectFields('id', $fieldName);
+        $this->addOrder($fieldName);
+
+        $values = $this->get('all');
+        $valuesById = [];
+
+        foreach ($values as $value) {
+            $valuesById[$value->$fieldId] = $value->$fieldName;
+        }
+
+        return $valuesById;
+    }
+
+
+    public function getSql()
+    {
+        return $this->sql;
+    }
+
 }

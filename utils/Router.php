@@ -2,7 +2,7 @@
 
 class Router
 {
-    public static function urlView($folder, $page, $options = []){
+    public static function urlView($folder = '', $page = '', $options = []){
 
         $url = 'index.php';
         if($folder === '' || $page === ''){
@@ -43,14 +43,14 @@ class Router
 
     public static function controlMethod($class, $method)
     {
-        if(!is_callable([$class, $method])){
+        if(!method_exists($class, $method)){
             die('Routing [002] : ' . $method . ' inexistante');
         }
     }
 
     public static function get($key, $callback = '')
     {
-        if (!isset($_GET[$key])) {
+        if (!Router::check($key)) {
             die('Routing [003] : ' . $key . ' n\'est pas bien renseigné');
         }
         
@@ -59,6 +59,12 @@ class Router
         }
 
         return $_GET[$key];
+    }
+
+
+    public static function check($name)
+    {
+        return isset($_GET[$name]);
     }
 
 }

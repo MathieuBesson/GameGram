@@ -4,7 +4,7 @@ define('NAME_APPLICATION', 'GameGram');
 
 // Constantes de BDD
 define('BDD_USER', 'root'); // Identifiant de dev local
-define('BDD_PASS', 'root'); // Identifiant de dev local
+define('BDD_PASS', ''); // Identifiant de dev local
 define('BDD_HOST', 'localhost');
 define('BDD_NAME', 'gamegram');
 

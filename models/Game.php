@@ -10,6 +10,11 @@ class Game extends ORM
         parent::__construct();
         $this->setTable('games');
 
+        $this->Platform = new Platform();
+        $this->Publisher = new Publisher();
+        $this->Family = new Family();
+
+
         if ($id != null) {
             $this->populate($id);
         }
@@ -36,6 +41,43 @@ class Game extends ORM
         }
 
         return $gamesById;
+    }
+
+
+    public function search($name, $options)
+    {
+        $this->setSelectFields('id', 'name', 'year', 'note');
+
+        $searchParams = [
+            [
+                'field' => 'name',
+                'type' => PDO::PARAM_STR,
+                'value' => '%' . $name . '%',
+                'operator' => 'LIKE'
+            ],
+            [
+                'field' => 'note',
+                'operator' => '>='
+            ],
+            ['field' => 'platform_id'],
+            ['field' => 'publisher_id'],
+            ['field' => 'family_id']
+        ];
+
+        foreach($searchParams as $param){
+            $type = $param['type'] ?? PDO::PARAM_INT;
+            $operator = $param['operator'] ?? '=';
+            $value = $param['value'] ?? $options[$param['field']];
+
+            if($value != 0 && $value != ''){
+                $this->addWhereFields($param['field'], $value, $operator, $type);
+            }
+        }
+
+        $this->addWhereFields('public', 1);
+        $this->addOrder('name');
+
+        return $this->get('all');
     }
 
     // Méthode du coeur du système

@@ -2,6 +2,8 @@
 class Comment extends ORM
 {
 	public $User;
+	// public $Post;
+
 
     public function __construct($id = null)
     {
@@ -41,27 +43,34 @@ class Comment extends ORM
     	return $commentsComplete;
     }
 
-    public function lastCommentsWithGameAndUserById($id)
+    public function lastCommentsWithGameAndUserById($userId)
     {
-        $Auth = new Auth;
-        $this->addOrder('created', 'DESC');
-        $this->setSelectFields('user_id', 'id');
-        $this->addWhereFields('user_id', $id, '=');
-        $this->setLimit(5);
-        $comments = $this->get('all');
+        $this->addWhereFields('user_id', $userId, '=', PDO::PARAM_INT);
+    	$this->setSelectFields('id');
+    	$this->addOrder('created', 'ASC');
+    	$this->setLimit(10);
+    	$comments = $this->get('all');
 
-        $commentsComplete = [];
+    	$commentsComplete = [];
+
     	foreach ($comments as $comment) {
-    		$commentsComplete[] = new Comment($comment->id);
+            $comment = new Comment($comment->id);
+            $comment->loadPost();
+            $commentsComplete[] = $comment; 
     	}
 
-        return $commentsComplete;
+    	return $commentsComplete;
     }
 
     public function nbCommentsOfPost($postId)
     {
     	$this->addWhereFields('post_id', $postId, '=', PDO::PARAM_INT);
         return $this->get('count');
+    }
+
+    public function loadPost()
+    {
+        $this->Post = new Post($this->post_id);
     }
 
     public function populate($id)

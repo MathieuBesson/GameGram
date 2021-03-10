@@ -5,6 +5,7 @@
 
 <div class="row justify-content-center mt-5">
 	<div class="col col-sm-8">
+
 		<?php foreach ($_member->loadPostsAndComments() as $content) {
 			if (get_class($content) === 'Post') {
 				$post = $content;
