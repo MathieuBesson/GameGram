@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 class GamesViewController extends Controller
 {
@@ -13,7 +13,7 @@ class GamesViewController extends Controller
     public function acceuil()
     {
         return [
-            'title' => 'Acceuil', 
+            'title' => 'Acceuil',
             'description' => 'Un tout nouveau réseau social centré sur l\'univers des jeux-vidéos Multijoueurs !'
         ];
     }
@@ -21,7 +21,7 @@ class GamesViewController extends Controller
     public function presentation()
     {
         return [
-            'title' => 'Présentation', 
+            'title' => 'Présentation',
             'description' => 'Présentation de ' . NAME_APPLICATION
         ];
     }
@@ -29,7 +29,7 @@ class GamesViewController extends Controller
     public function all()
     {
         return [
-            'title' => 'Jeux', 
+            'title' => 'Jeux',
             'description' => 'Les jeux de ' . NAME_APPLICATION,
             'listOfGames' => $this->Game->listOfPublicGames()
         ];
@@ -39,14 +39,14 @@ class GamesViewController extends Controller
     public function one()
     {
         $this->Game->populate(Router::get('id', 'is_numeric'));
-    
+
         if (!$this->Game->exist()) {
             $this->Alert->setAlert('Ce jeu n\'existe pas');
             $this->Alert->redirect(['dir' => 'games', 'page' => 'all']);
         }
-        
+
         return [
-            'title' => $this->Game->name, 
+            'title' => $this->Game->name,
             'description' => 'Présentation de ' . $this->Game->name,
             'jeu' => $this->Game
         ];
@@ -56,9 +56,18 @@ class GamesViewController extends Controller
     public function search()
     {
         $games = [];
-        // dd($_GET); die;
-        if(Router::check('name')){
 
+        // Form défault values
+        $name = '';
+        $publisherId = 0;
+        $familyId = 0;
+        $platformId = 0;
+        $note = 0;
+        $search = false;
+
+
+        if (Router::check('name')) {
+            $search = true;
             $name = Router::get('name', 'is_string');
             $publisherId = Router::get('publisher_id', 'is_numeric');
             $familyId = Router::get('family_id', 'is_numeric');
@@ -74,7 +83,7 @@ class GamesViewController extends Controller
                     'note' => $note
                 ]
             );
-        } 
+        }
 
 
         return [
@@ -83,10 +92,27 @@ class GamesViewController extends Controller
             'families' => $this->Game->Family->getList(),
             'platforms' => $this->Game->Platform->getList(),
 
+            'search_name' => $name,
+            'search_publisher_id' => $publisherId,
+            'search_family_id' => $familyId,
+            'search_platform_id' => $platformId,
+            'search_note_id' => $note,
 
-            'title' => 'Recherche', 
+            'collection' => (new Collection)->collectionOfUser($this->Auth->User->id),
+
+            'title' => 'Recherche',
             'description' => 'Rechercher',
-            // 'listOfGames' => $this->Game->listOfGamesWithTri()
+        ];
+    }
+
+
+    public function suggest()
+    {
+        $this->notAllowIfNotLogged();
+        return [
+            'games' => $this->Game->getSuggestGames(),
+            'title' => 'Suggestion de jeux',
+            'description' => 'Chercher un jeu dans la abse de données'
         ];
     }
 }

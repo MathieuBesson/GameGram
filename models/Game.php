@@ -48,36 +48,76 @@ class Game extends ORM
     {
         $this->setSelectFields('id', 'name', 'year', 'note');
 
-        $searchParams = [
-            [
-                'field' => 'name',
-                'type' => PDO::PARAM_STR,
-                'value' => '%' . $name . '%',
-                'operator' => 'LIKE'
-            ],
-            [
-                'field' => 'note',
-                'operator' => '>='
-            ],
-            ['field' => 'platform_id'],
-            ['field' => 'publisher_id'],
-            ['field' => 'family_id']
-        ];
+        $this->addWhereFields('name', '%' . $name . '%', 'LIKE', PDO::PARAM_STR);
 
-        foreach($searchParams as $param){
-            $type = $param['type'] ?? PDO::PARAM_INT;
-            $operator = $param['operator'] ?? '=';
-            $value = $param['value'] ?? $options[$param['field']];
-
-            if($value != 0 && $value != ''){
-                $this->addWhereFields($param['field'], $value, $operator, $type);
-            }
+        if(isset($options['platform_id']) && $options['platform_id'] != 0){
+            $this->addWhereFields('platform_id', $options['platform_id']);
         }
+
+        if(isset($options['publisher_id']) && $options['publisher_id'] != 0){
+            $this->addWhereFields('publisher_id', $options['publisher_id']);
+        }
+
+        if(isset($options['family_id']) && $options['family_id'] != 0){
+            $this->addWhereFields('family_id', $options['family_id']);
+        }
+
+        if(isset($options['note'])){
+            $this->addWhereFields('note', $options['note'], '>=');
+        }
+
 
         $this->addWhereFields('public', 1);
         $this->addOrder('name');
 
         return $this->get('all');
+    }
+
+    public function getSuggestGames()
+    {
+        $games = [];
+
+        // Collections (Posts, likes, Comments)
+
+        // Jeux utilisés dans les posts, likes et commentés 
+        $post = new Post();
+
+
+        dd($post->fieldOftable('game_id')); 
+
+        
+        $postsId = (new Comment)->fieldOftable('post_id'); 
+
+        foreach($postsId as $postId){
+
+            // $post->addWhereFields('id', );
+        }
+
+
+        dd((new Like)->fieldOftable('post_id', false)); 
+
+
+        die;
+
+        dd(array_unique(array_column((new Like())->fieldOftable('game_id'), 'game_id'))); 
+
+        
+        
+        
+        die;
+
+
+
+
+
+
+        // Jeux de la console la plus représenté dans les suggestions et de l'éditeur et de la famille --> intersection
+
+        
+        
+        // Vérifier que les suggestions ne sont pas dans la collection => ORM --> IN (toute les id collection)
+        
+        return $games;
     }
 
     // Méthode du coeur du système

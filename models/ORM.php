@@ -462,6 +462,17 @@ class ORM
         return $this->existInBDD;
     }
 
+
+    public function fieldOftable($field, $addOrder = true)
+    {
+        $this->setSelectFields($field);
+
+        if($addOrder){
+            $this->addOrder('created', 'DESC');
+        }
+        return array_unique(array_column($this->get('all'), $field));
+    }
+
     // Je "garnis" mon objet avec des propriétés qui correspondent 
     // aux noms de mes champs
     // avec les valeurs associées à l'id
